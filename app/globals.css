@@ -2,14 +2,20 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --foreground: #111827;
+  --font-satoshi: var(--font-satoshi);
+  
+  /* Professional color palette */
+  --color-primary: #3B82F6;
+  --color-secondary: #6B7280;
+  --color-accent: #10B981;
+  --color-border: #E5E7EB;
+  --color-border-light: #F3F4F6;
+  
+  /* Category colors - more muted for professional look */
+  --color-streaming: #8B5CF6;
+  --color-music: #06B6D4; 
+  --color-productivity: #3B82F6;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -20,7 +26,16 @@
 }
 
 body {
-  background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--background);
+  font-family: var(--font-satoshi), system-ui, -apple-system, sans-serif;
+}
+
+/* Professional border utilities */
+.border-professional {
+  border: 1px solid var(--color-border);
+}
+
+.border-light {
+  border: 1px solid var(--color-border-light);
 }
