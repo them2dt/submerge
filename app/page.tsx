@@ -245,17 +245,6 @@ export default function Home() {
                                       </div>
                                     )}
                                     
-                                    <div className="mb-3">
-                                      <ul className="text-xs text-gray-600 space-y-1">
-                                        {plan.features.slice(0, 3).map((feature, idx) => (
-                                          <li key={idx}>• {feature}</li>
-                                        ))}
-                                        {plan.features.length > 3 && (
-                                          <li className="text-gray-500">+{plan.features.length - 3} more...</li>
-                                        )}
-                                      </ul>
-                                    </div>
-                                    
                                     {isSelected && (
                                       <button
                                         className="w-full mt-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium transition-colors text-gray-700"
