@@ -3,10 +3,11 @@
 import { useState, useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Plus, Minus, Globe, DollarSign, TrendingUp, Calculator, ChevronDown, ChevronRight } from 'lucide-react';
-import { subscriptions, countries, getCategoryColor, getCategoryName, type Subscription, type Country } from '@/lib/subscriptions';
+import { subscriptions, countries, getCategoryColor, getCategoryName, type Subscription, type SubscriptionPlan, type Country } from '@/lib/subscriptions';
 
 interface SelectedSubscription {
   subscription: Subscription;
+  plan: SubscriptionPlan;
   billing: 'monthly' | 'yearly';
 }
 
@@ -27,27 +28,29 @@ export default function Home() {
     setExpandedCategories(newExpanded);
   };
 
-  const addSubscription = (subscription: Subscription) => {
-    if (!selectedSubscriptions.find(s => s.subscription.id === subscription.id)) {
-      setSelectedSubscriptions([...selectedSubscriptions, { subscription, billing: 'monthly' }]);
+  const addSubscription = (subscription: Subscription, plan: SubscriptionPlan) => {
+    if (!selectedSubscriptions.find(s => s.subscription.id === subscription.id && s.plan.id === plan.id)) {
+      setSelectedSubscriptions([...selectedSubscriptions, { subscription, plan, billing: 'monthly' }]);
     }
   };
 
-  const removeSubscription = (subscriptionId: string) => {
-    setSelectedSubscriptions(selectedSubscriptions.filter(s => s.subscription.id !== subscriptionId));
+  const removeSubscription = (subscriptionId: string, planId: string) => {
+    setSelectedSubscriptions(selectedSubscriptions.filter(s => 
+      !(s.subscription.id === subscriptionId && s.plan.id === planId)
+    ));
   };
 
-  const toggleBilling = (subscriptionId: string) => {
+  const toggleBilling = (subscriptionId: string, planId: string) => {
     setSelectedSubscriptions(selectedSubscriptions.map(s => 
-      s.subscription.id === subscriptionId 
+      s.subscription.id === subscriptionId && s.plan.id === planId
         ? { ...s, billing: s.billing === 'monthly' ? 'yearly' : 'monthly' }
         : s
     ));
   };
 
   const totalMonthly = useMemo(() => {
-    return selectedSubscriptions.reduce((total, { subscription, billing }) => {
-      const price = subscription.pricing[selectedCountry.code];
+    return selectedSubscriptions.reduce((total, { plan, billing }) => {
+      const price = plan.pricing[selectedCountry.code];
       if (!price) return total;
       
       if (billing === 'monthly') {
@@ -61,8 +64,8 @@ export default function Home() {
   const totalYearly = totalMonthly * 12;
 
   const chartData = useMemo(() => {
-    const categoryTotals = selectedSubscriptions.reduce((acc, { subscription, billing }) => {
-      const price = subscription.pricing[selectedCountry.code];
+    const categoryTotals = selectedSubscriptions.reduce((acc, { subscription, plan, billing }) => {
+      const price = plan.pricing[selectedCountry.code];
       if (!price) return acc;
       
       const monthlyPrice = billing === 'monthly' 
@@ -93,11 +96,11 @@ export default function Home() {
   // Calculate category stats
   const getCategoryStats = (category: string, subs: Subscription[]) => {
     const selectedCount = selectedSubscriptions.filter(s => s.subscription.category === category).length;
-    const totalCount = subs.length;
+    const totalCount = subs.reduce((count, sub) => count + sub.plans.length, 0);
     const categoryTotal = selectedSubscriptions
       .filter(s => s.subscription.category === category)
-      .reduce((total, { subscription, billing }) => {
-        const price = subscription.pricing[selectedCountry.code];
+      .reduce((total, { plan, billing }) => {
+        const price = plan.pricing[selectedCountry.code];
         if (!price) return total;
         
         const monthlyPrice = billing === 'monthly' 
@@ -191,60 +194,87 @@ export default function Home() {
                   
                   {isExpanded && (
                     <div className="p-6">
-                      <div className="grid md:grid-cols-3 gap-4">
-                        {subs.map(subscription => {
-                          const isSelected = selectedSubscriptions.find(s => s.subscription.id === subscription.id);
-                          const pricing = subscription.pricing[selectedCountry.code];
-                          
-                          return (
-                            <div 
-                              key={subscription.id}
-                              className={`border rounded-lg p-4 transition-all cursor-pointer ${
-                                isSelected 
-                                  ? 'border-blue-500 bg-blue-50' 
-                                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                              }`}
-                              onClick={() => isSelected ? removeSubscription(subscription.id) : addSubscription(subscription)}
-                            >
-                              <div className="flex items-center justify-between mb-3">
-                                <div className="flex-1">
-                                  <h3 className="font-medium text-gray-900 text-sm">{subscription.name}</h3>
-                                </div>
-                                {isSelected ? (
-                                  <Minus className="w-4 h-4 text-red-600 ml-2" />
-                                ) : (
-                                  <Plus className="w-4 h-4 text-gray-400 ml-2" />
-                                )}
-                              </div>
-                              
-                              {pricing && (
-                                <div className="mb-3">
-                                  <p className="text-base font-semibold text-gray-900">
-                                    {selectedCountry.symbol}{pricing.monthly}
-                                    <span className="text-xs font-normal text-gray-500">/mo</span>
-                                  </p>
-                                  {pricing.yearly && (
-                                    <p className="text-xs text-gray-600">
-                                      {selectedCountry.symbol}{pricing.yearly}/year
-                                    </p>
-                                  )}
-                                </div>
-                              )}
-                              
-                              {isSelected && (
-                                <button
-                                  className="w-full mt-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium transition-colors text-gray-700"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleBilling(subscription.id);
-                                  }}
-                                >
-                                  {selectedSubscriptions.find(s => s.subscription.id === subscription.id)?.billing === 'monthly' ? 'Switch to Yearly' : 'Switch to Monthly'}
-                                </button>
-                              )}
+                      <div className="space-y-6">
+                        {subs.map(subscription => (
+                          <div key={subscription.id} className="space-y-3">
+                            <h4 className="font-medium text-gray-900 text-base border-b border-gray-100 pb-2">
+                              {subscription.name}
+                            </h4>
+                            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+                              {subscription.plans.map(plan => {
+                                const isSelected = selectedSubscriptions.find(s => 
+                                  s.subscription.id === subscription.id && s.plan.id === plan.id
+                                );
+                                const pricing = plan.pricing[selectedCountry.code];
+                                
+                                return (
+                                  <div 
+                                    key={plan.id}
+                                    className={`border rounded-lg p-4 transition-all cursor-pointer ${ 
+                                      isSelected 
+                                        ? 'border-blue-500 bg-blue-50' 
+                                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                    }`}
+                                    onClick={() => isSelected 
+                                      ? removeSubscription(subscription.id, plan.id) 
+                                      : addSubscription(subscription, plan)
+                                    }
+                                  >
+                                    <div className="flex items-center justify-between mb-3">
+                                      <div className="flex-1">
+                                        <h5 className="font-medium text-gray-900 text-sm">{plan.name}</h5>
+                                      </div>
+                                      {isSelected ? (
+                                        <Minus className="w-4 h-4 text-red-600 ml-2" />
+                                      ) : (
+                                        <Plus className="w-4 h-4 text-gray-400 ml-2" />
+                                      )}
+                                    </div>
+                                    
+                                    {pricing && (
+                                      <div className="mb-3">
+                                        <p className="text-base font-semibold text-gray-900">
+                                          {selectedCountry.symbol}{pricing.monthly.toFixed(2)}
+                                          <span className="text-xs font-normal text-gray-500">/mo</span>
+                                        </p>
+                                        {pricing.yearly && (
+                                          <p className="text-xs text-gray-600">
+                                            {selectedCountry.symbol}{pricing.yearly.toFixed(2)}/year
+                                          </p>
+                                        )}
+                                      </div>
+                                    )}
+                                    
+                                    <div className="mb-3">
+                                      <ul className="text-xs text-gray-600 space-y-1">
+                                        {plan.features.slice(0, 3).map((feature, idx) => (
+                                          <li key={idx}>• {feature}</li>
+                                        ))}
+                                        {plan.features.length > 3 && (
+                                          <li className="text-gray-500">+{plan.features.length - 3} more...</li>
+                                        )}
+                                      </ul>
+                                    </div>
+                                    
+                                    {isSelected && (
+                                      <button
+                                        className="w-full mt-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium transition-colors text-gray-700"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          toggleBilling(subscription.id, plan.id);
+                                        }}
+                                      >
+                                        {selectedSubscriptions.find(s => 
+                                          s.subscription.id === subscription.id && s.plan.id === plan.id
+                                        )?.billing === 'monthly' ? 'Switch to Yearly' : 'Switch to Monthly'}
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
-                          );
-                        })}
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
@@ -308,7 +338,7 @@ export default function Home() {
                         ))}
                       </Pie>
                       <Tooltip 
-                        formatter={(value) => [`${selectedCountry.symbol}${value}`, 'Monthly Cost']}
+                        formatter={(value) => [`${selectedCountry.symbol}${Number(value).toFixed(2)}`, 'Monthly Cost']}
                       />
                     </PieChart>
                   </ResponsiveContainer>
@@ -325,7 +355,7 @@ export default function Home() {
                         <span className="text-sm font-medium text-gray-700">{item.name}</span>
                       </div>
                       <span className="text-sm font-semibold text-gray-900">
-                        {selectedCountry.symbol}{item.value}
+                        {selectedCountry.symbol}{item.value.toFixed(2)}
                       </span>
                     </div>
                   ))}
@@ -339,14 +369,14 @@ export default function Home() {
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Active Subscriptions</h3>
                 
                 <div className="space-y-2">
-                  {selectedSubscriptions.map(({ subscription, billing }) => {
-                    const pricing = subscription.pricing[selectedCountry.code];
+                  {selectedSubscriptions.map(({ subscription, plan, billing }) => {
+                    const pricing = plan.pricing[selectedCountry.code];
                     const cost = billing === 'monthly' 
                       ? pricing?.monthly 
                       : (pricing?.yearly || pricing?.monthly * 12) / 12;
                     
                     return (
-                      <div key={subscription.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-100">
+                      <div key={`${subscription.id}-${plan.id}`} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-100">
                         <div className="flex items-center">
                           <div className="mr-3">
                             <div 
@@ -355,7 +385,9 @@ export default function Home() {
                             />
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900 text-sm">{subscription.name}</p>
+                            <p className="font-medium text-gray-900 text-sm">
+                              {subscription.name} {plan.name}
+                            </p>
                             <p className="text-xs text-gray-500 capitalize">{billing} billing</p>
                           </div>
                         </div>
@@ -371,6 +403,25 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-200 bg-gray-50 py-8 mt-12">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center">
+            <p className="text-sm text-gray-600">
+              Developed by{' '}
+              <a 
+                href="https://maruthan.com" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="font-semibold text-gray-900 hover:text-blue-600 transition-colors underline"
+              >
+                maruthan
+              </a>
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
