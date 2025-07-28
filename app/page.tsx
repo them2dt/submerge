@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { Plus, Minus, Globe, DollarSign, TrendingUp, Calculator } from 'lucide-react';
+import { Plus, Minus, Globe, DollarSign, TrendingUp, Calculator, ChevronDown, ChevronRight } from 'lucide-react';
 import { subscriptions, countries, getCategoryColor, getCategoryName, type Subscription, type Country } from '@/lib/subscriptions';
 
 interface SelectedSubscription {
@@ -13,6 +13,19 @@ interface SelectedSubscription {
 export default function Home() {
   const [selectedCountry, setSelectedCountry] = useState<Country>(countries[0]);
   const [selectedSubscriptions, setSelectedSubscriptions] = useState<SelectedSubscription[]>([]);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
+    new Set(['streaming', 'music', 'productivity', 'gaming', 'news', 'fitness', 'cloud'])
+  );
+
+  const toggleCategory = (category: string) => {
+    const newExpanded = new Set(expandedCategories);
+    if (newExpanded.has(category)) {
+      newExpanded.delete(category);
+    } else {
+      newExpanded.add(category);
+    }
+    setExpandedCategories(newExpanded);
+  };
 
   const addSubscription = (subscription: Subscription) => {
     if (!selectedSubscriptions.find(s => s.subscription.id === subscription.id)) {
@@ -77,6 +90,26 @@ export default function Home() {
     }, {} as Record<string, Subscription[]>);
   }, []);
 
+  // Calculate category stats
+  const getCategoryStats = (category: string, subs: Subscription[]) => {
+    const selectedCount = selectedSubscriptions.filter(s => s.subscription.category === category).length;
+    const totalCount = subs.length;
+    const categoryTotal = selectedSubscriptions
+      .filter(s => s.subscription.category === category)
+      .reduce((total, { subscription, billing }) => {
+        const price = subscription.pricing[selectedCountry.code];
+        if (!price) return total;
+        
+        const monthlyPrice = billing === 'monthly' 
+          ? price.monthly 
+          : (price.yearly || price.monthly * 12) / 12;
+        
+        return total + monthlyPrice;
+      }, 0);
+
+    return { selectedCount, totalCount, categoryTotal };
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
@@ -114,78 +147,110 @@ export default function Home() {
       <div className="max-w-7xl mx-auto px-6 py-6">
         <div className="grid lg:grid-cols-4 gap-6">
           {/* Subscription Selection */}
-          <div className="lg:col-span-3 space-y-6">
-            {Object.entries(groupedSubscriptions).map(([category, subs]) => (
-              <div key={category} className="border border-gray-200 rounded-lg bg-white">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-                    <div 
-                      className="w-3 h-3 rounded-full mr-3"
-                      style={{ backgroundColor: getCategoryColor(category) }}
-                    />
-                    {getCategoryName(category)}
-                  </h2>
-                </div>
-                
-                <div className="p-6">
-                  <div className="grid md:grid-cols-3 gap-4">
-                    {subs.map(subscription => {
-                      const isSelected = selectedSubscriptions.find(s => s.subscription.id === subscription.id);
-                      const pricing = subscription.pricing[selectedCountry.code];
-                      
-                      return (
-                        <div 
-                          key={subscription.id}
-                          className={`border rounded-lg p-4 transition-all cursor-pointer ${
-                            isSelected 
-                              ? 'border-blue-500 bg-blue-50' 
-                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                          }`}
-                          onClick={() => isSelected ? removeSubscription(subscription.id) : addSubscription(subscription)}
-                        >
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="text-2xl">{subscription.logo}</span>
-                            {isSelected ? (
-                              <Minus className="w-4 h-4 text-red-600" />
-                            ) : (
-                              <Plus className="w-4 h-4 text-gray-400" />
-                            )}
-                          </div>
-                          
-                          <h3 className="font-medium text-gray-900 mb-2 text-sm">{subscription.name}</h3>
-                          
-                          {pricing && (
-                            <div className="mb-3">
-                              <p className="text-base font-semibold text-gray-900">
-                                {selectedCountry.symbol}{pricing.monthly}
-                                <span className="text-xs font-normal text-gray-500">/mo</span>
-                              </p>
-                              {pricing.yearly && (
-                                <p className="text-xs text-gray-600">
-                                  {selectedCountry.symbol}{pricing.yearly}/year
-                                </p>
-                              )}
-                            </div>
-                          )}
-                          
-                          {isSelected && (
-                            <button
-                              className="w-full mt-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium transition-colors text-gray-700"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleBilling(subscription.id);
-                              }}
-                            >
-                              {selectedSubscriptions.find(s => s.subscription.id === subscription.id)?.billing === 'monthly' ? 'Switch to Yearly' : 'Switch to Monthly'}
-                            </button>
+          <div className="lg:col-span-3 space-y-4">
+            {Object.entries(groupedSubscriptions).map(([category, subs]) => {
+              const isExpanded = expandedCategories.has(category);
+              const stats = getCategoryStats(category, subs);
+
+              return (
+                <div key={category} className="border border-gray-200 rounded-lg bg-white">
+                  <div 
+                    className="px-6 py-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors"
+                    onClick={() => toggleCategory(category)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="flex items-center mr-4">
+                          {isExpanded ? (
+                            <ChevronDown className="w-4 h-4 text-gray-500" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4 text-gray-500" />
                           )}
                         </div>
-                      );
-                    })}
+                        <div 
+                          className="w-3 h-3 rounded-full mr-3"
+                          style={{ backgroundColor: getCategoryColor(category) }}
+                        />
+                        <h2 className="text-lg font-semibold text-gray-900">
+                          {getCategoryName(category)}
+                        </h2>
+                      </div>
+                      
+                      <div className="flex items-center space-x-4 text-sm">
+                        <span className="text-gray-600">
+                          {stats.selectedCount}/{stats.totalCount} selected
+                        </span>
+                        {stats.categoryTotal > 0 && (
+                          <span className="font-semibold text-gray-900">
+                            {selectedCountry.symbol}{stats.categoryTotal.toFixed(2)}/mo
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
+                  
+                  {isExpanded && (
+                    <div className="p-6">
+                      <div className="grid md:grid-cols-3 gap-4">
+                        {subs.map(subscription => {
+                          const isSelected = selectedSubscriptions.find(s => s.subscription.id === subscription.id);
+                          const pricing = subscription.pricing[selectedCountry.code];
+                          
+                          return (
+                            <div 
+                              key={subscription.id}
+                              className={`border rounded-lg p-4 transition-all cursor-pointer ${
+                                isSelected 
+                                  ? 'border-blue-500 bg-blue-50' 
+                                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                              }`}
+                              onClick={() => isSelected ? removeSubscription(subscription.id) : addSubscription(subscription)}
+                            >
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex-1">
+                                  <h3 className="font-medium text-gray-900 text-sm">{subscription.name}</h3>
+                                </div>
+                                {isSelected ? (
+                                  <Minus className="w-4 h-4 text-red-600 ml-2" />
+                                ) : (
+                                  <Plus className="w-4 h-4 text-gray-400 ml-2" />
+                                )}
+                              </div>
+                              
+                              {pricing && (
+                                <div className="mb-3">
+                                  <p className="text-base font-semibold text-gray-900">
+                                    {selectedCountry.symbol}{pricing.monthly}
+                                    <span className="text-xs font-normal text-gray-500">/mo</span>
+                                  </p>
+                                  {pricing.yearly && (
+                                    <p className="text-xs text-gray-600">
+                                      {selectedCountry.symbol}{pricing.yearly}/year
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                              
+                              {isSelected && (
+                                <button
+                                  className="w-full mt-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium transition-colors text-gray-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleBilling(subscription.id);
+                                  }}
+                                >
+                                  {selectedSubscriptions.find(s => s.subscription.id === subscription.id)?.billing === 'monthly' ? 'Switch to Yearly' : 'Switch to Monthly'}
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Summary & Chart */}
@@ -283,7 +348,12 @@ export default function Home() {
                     return (
                       <div key={subscription.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-100">
                         <div className="flex items-center">
-                          <span className="text-base mr-2">{subscription.logo}</span>
+                          <div className="mr-3">
+                            <div 
+                              className="w-2 h-2 rounded-full"
+                              style={{ backgroundColor: getCategoryColor(subscription.category) }}
+                            />
+                          </div>
                           <div>
                             <p className="font-medium text-gray-900 text-sm">{subscription.name}</p>
                             <p className="text-xs text-gray-500 capitalize">{billing} billing</p>
