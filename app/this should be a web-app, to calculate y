@@ -1,9 +1,0 @@
-this should be a web-app, to calculate your subscriptions and create a donut chart to get an overview how much you're spending in total, for each section, and then for each subscription ofc.
-
-this app should contain all international subscriptions (netflix, spotify, disney+, etc.) and we want also local major subscriptions.
-
-and since international subscriptions have different pricings and models per country we also want to have this included.
-
-we don't need a bunch of subscriptions for now, just 3 per category.
-
-and read the @STYLE_GUIDE.md to use the style. instead of clash just use the satoshi font  in the @/fonts folder.

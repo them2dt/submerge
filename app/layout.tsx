@@ -11,7 +11,7 @@ const satoshi = localFont({
 
 export const metadata: Metadata = {
   title: "Submerge - Subscription Calculator",
-  description: "Calculate and visualize your subscription spending with beautiful charts",
+  description: "Calculate and visualize your subscription spending.",
 };
 
 export default function RootLayout({
