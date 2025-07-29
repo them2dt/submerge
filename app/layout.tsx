@@ -14,8 +14,14 @@ export const metadata: Metadata = {
   description: "Calculate and visualize your subscription spending.",
   icons: "/icon.png",
   openGraph: {
-    images: "/social-image.png",
-  }
+    images: [
+      {
+        url: "/social-image.png",
+        width: 1200,
+        height: 630,
+      },
+    ],
+  },
 };
 
 export default function RootLayout({
