@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import Image from 'next/image';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { Plus, Minus, Globe, DollarSign, TrendingUp, Calculator, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Minus, Globe, DollarSign, TrendingUp, ChevronDown, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { subscriptions, countries, getCategoryColor, getCategoryName, type Subscription, type SubscriptionPlan, type Country } from '@/lib/subscriptions';
 
@@ -132,7 +133,7 @@ export default function Home() {
               transition={{ duration: 0.5, delay: 0.1 }}
             >
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Calculator className="w-5 h-5 text-white" />
+                <Image src="/icon.png" alt="Submerge Icon" width={20} height={20} />
               </div>
               <div className="min-w-0">
                 <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 truncate">Submerge</h1>
